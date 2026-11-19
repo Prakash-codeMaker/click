@@ -1005,6 +1005,16 @@ def test_show_envvar_auto_prefix(runner):
     assert "TEST_ARG1" in result.output
 
 
+def test_show_envvar_auto_prefix_error_hint(runner):
+    @click.command()
+    @click.option("--arg1", required=True, show_envvar=True)
+    def cmd(arg1):
+        pass
+
+    result = runner.invoke(cmd, [], auto_envvar_prefix="TEST")
+    assert "Missing option '--arg1' (env var: 'TEST_ARG1')" in result.output
+
+
 def test_show_envvar_auto_prefix_dash_in_command(runner):
     @click.group()
     def cli():
