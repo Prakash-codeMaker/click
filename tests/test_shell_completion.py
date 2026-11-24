@@ -368,8 +368,8 @@ def test_full_source_powershell(runner):
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
-        (r"mycli sub C:\\Users\\ann\\doc", ["mycli", "sub", r"C:\\Users\\ann\\doc"]),
-        (r"mycli sub C:\\Temp\\\\", ["mycli", "sub", r"C:\\Temp\\\\"]),
+        (r"mycli sub C:\Users\ann\doc", ["mycli", "sub", r"C:\Users\ann\doc"]),
+        (r"mycli sub C:\Temp\\", ["mycli", "sub", r"C:\Temp\\"]),
         (
             "mycli sub 'C:\\Users\\Ann Smith\\doc'",
             ["mycli", "sub", "C:\\Users\\Ann Smith\\doc"],
@@ -386,10 +386,10 @@ def test_split_powershell_arg_string(value, expected):
 
 
 def test_powershell_completion_args_preserve_windows_paths(monkeypatch):
-    monkeypatch.setenv("COMP_WORDS", r"mycli sub C:\\Users\\ann\\doc")
+    monkeypatch.setenv("COMP_WORDS", r"mycli sub C:\Users\ann\doc")
     monkeypatch.setenv("COMP_CWORD", "2")
     pc = PowerShellComplete(Command("mycli"), {}, "mycli", "_X_COMPLETE")
-    assert pc.get_completion_args() == (["sub"], r"C:\\Users\\ann\\doc")
+    assert pc.get_completion_args() == (["sub"], r"C:\Users\ann\doc")
 
 
 @pytest.mark.parametrize(
