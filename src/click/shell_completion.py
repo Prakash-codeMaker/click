@@ -208,8 +208,7 @@ complete --no-files --command %(prog_name)s --arguments \
 # Compatible with Windows PowerShell 5.1+ and PowerShell (pwsh) 7+.
 # Uses Register-ArgumentCompleter -Native, which receives the command AST
 # as parsed by PowerShell. The command text is forwarded verbatim through
-# COMP_WORDS so the Python side can reuse the same shlex-based splitting
-# used by the bash/zsh completers.
+# COMP_WORDS and parsed with PowerShell's quoting and escaping rules.
 _SOURCE_POWERSHELL = """\
 Register-ArgumentCompleter -Native -CommandName %(prog_name)s -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
@@ -428,8 +427,15 @@ class BashComplete(ShellComplete):
         self._check_version()
         return super().source()
 
+    def source_vars(self) -> _SourceVarsDict:
+        vars = super().source_vars()
+        # PowerShell single-quoted strings are literal; doubling an embedded
+        # quote keeps executable paths with spaces or apostrophes as one word.
+        vars["prog_name"] = "'" + self.prog_name.replace("'", "''") + "'"
+        return vars
+
     def get_completion_args(self) -> tuple[list[str], str]:
-        cwords = split_arg_string(os.environ["COMP_WORDS"])
+        cwords = split_powershell_arg_string(os.environ["COMP_WORDS"])
         cword = int(os.environ["COMP_CWORD"])
         args = cwords[1:cword]
 
@@ -630,6 +636,86 @@ def split_arg_string(string: str) -> list[str]:
 
     return out
 
+def split_powershell_arg_string(string: str) -> list[str]:
+    """Split PowerShell command text without treating backslashes as escapes.
+
+    PowerShell uses backticks for escaping, single quotes for literal strings
+    (with ``''`` for an embedded quote), and double quotes for expandable
+    strings. Incomplete quotes are kept as a partial token for tab completion.
+    """
+    out: list[str] = []
+    token: list[str] = []
+    quote: str | None = None
+    started = False
+    escape = chr(96)
+    index = 0
+
+    while index < len(string):
+        char = string[index]
+        next_char = string[index + 1] if index + 1 < len(string) else ""
+
+        if quote == "'":
+            if char == "'":
+                if next_char == "'":
+                    token.append("'")
+                    index += 2
+                    continue
+                quote = None
+                index += 1
+                continue
+            token.append(char)
+            index += 1
+            continue
+
+        if quote == '"':
+            if char == escape:
+                if next_char:
+                    token.append(next_char)
+                    index += 2
+                else:
+                    token.append(char)
+                    index += 1
+                continue
+            if char == '"':
+                quote = None
+                index += 1
+                continue
+            token.append(char)
+            index += 1
+            continue
+
+        if char.isspace():
+            if started:
+                out.append("".join(token))
+                token.clear()
+                started = False
+            index += 1
+            continue
+
+        if char in ("'", '"'):
+            quote = char
+            started = True
+            index += 1
+            continue
+
+        if char == escape:
+            if next_char:
+                token.append(next_char)
+                index += 2
+            else:
+                token.append(char)
+                started = True
+                index += 1
+            continue
+
+        token.append(char)
+        started = True
+        index += 1
+
+    if started:
+        out.append("".join(token))
+
+    return out
 
 def _is_incomplete_argument(ctx: Context, param: Parameter) -> bool:
     """Determine if the given parameter is an argument that can still
