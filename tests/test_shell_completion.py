@@ -375,8 +375,14 @@ def test_full_source_powershell(runner):
             ["mycli", "sub", "C:\\Users\\Ann Smith\\doc"],
         ),
         ("mycli sub 'O''Brien path'", ["mycli", "sub", "O'Brien path"]),
-        ("mycli sub path" + chr(96) + " with" + chr(96) + " spaces", ["mycli", "sub", "path with spaces"]),
-        ('mycli sub "path' + chr(96) + '"with' + chr(96) + '" quote"', ["mycli", "sub", 'path"with" quote']),
+        (
+            "mycli sub path" + chr(96) + " with" + chr(96) + " spaces",
+            ["mycli", "sub", "path with spaces"],
+        ),
+        (
+            'mycli sub "path' + chr(96) + '"with' + chr(96) + '" quote"',
+            ["mycli", "sub", 'path"with" quote'],
+        ),
         ("mycli sub 'unfinished path", ["mycli", "sub", "unfinished path"]),
         ("mycli '' next", ["mycli", "", "next"]),
     ],
