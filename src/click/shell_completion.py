@@ -427,15 +427,8 @@ class BashComplete(ShellComplete):
         self._check_version()
         return super().source()
 
-    def source_vars(self) -> _SourceVarsDict:
-        vars = super().source_vars()
-        # PowerShell single-quoted strings are literal; doubling an embedded
-        # quote keeps executable paths with spaces or apostrophes as one word.
-        vars["prog_name"] = "'" + self.prog_name.replace("'", "''") + "'"
-        return vars
-
     def get_completion_args(self) -> tuple[list[str], str]:
-        cwords = split_powershell_arg_string(os.environ["COMP_WORDS"])
+        cwords = split_arg_string(os.environ["COMP_WORDS"])
         cword = int(os.environ["COMP_CWORD"])
         args = cwords[1:cword]
 
@@ -528,8 +521,15 @@ class PowerShellComplete(ShellComplete):
     name: t.ClassVar[str] = "powershell"
     source_template: t.ClassVar[str] = _SOURCE_POWERSHELL
 
+    def source_vars(self) -> _SourceVarsDict:
+        vars = super().source_vars()
+        # PowerShell single-quoted strings are literal; doubling an embedded
+        # quote keeps executable paths with spaces or apostrophes as one word.
+        vars["prog_name"] = "'" + self.prog_name.replace("'", "''") + "'"
+        return vars
+
     def get_completion_args(self) -> tuple[list[str], str]:
-        cwords = split_arg_string(os.environ["COMP_WORDS"])
+        cwords = split_powershell_arg_string(os.environ["COMP_WORDS"])
         cword = int(os.environ["COMP_CWORD"])
         args = cwords[1:cword]
 
