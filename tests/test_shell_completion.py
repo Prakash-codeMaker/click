@@ -366,6 +366,47 @@ def test_full_source_powershell(runner):
 
 
 @pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (r"mycli sub C:\\Users\\ann\\doc", ["mycli", "sub", r"C:\\Users\\ann\\doc"]),
+        (r"mycli sub C:\\Temp\\\\", ["mycli", "sub", r"C:\\Temp\\\\"]),
+        (
+            "mycli sub 'C:\\Users\\Ann Smith\\doc'",
+            ["mycli", "sub", "C:\\Users\\Ann Smith\\doc"],
+        ),
+        ("mycli sub 'O''Brien path'", ["mycli", "sub", "O'Brien path"]),
+        ("mycli sub path" + chr(96) + " with" + chr(96) + " spaces", ["mycli", "sub", "path with spaces"]),
+        ('mycli sub "path' + chr(96) + '"with' + chr(96) + '" quote"', ["mycli", "sub", 'path"with" quote']),
+        ("mycli sub 'unfinished path", ["mycli", "sub", "unfinished path"]),
+        ("mycli '' next", ["mycli", "", "next"]),
+    ],
+)
+def test_split_powershell_arg_string(value, expected):
+    assert click.shell_completion.split_powershell_arg_string(value) == expected
+
+
+def test_powershell_completion_args_preserve_windows_paths(monkeypatch):
+    monkeypatch.setenv("COMP_WORDS", r"mycli sub C:\\Users\\ann\\doc")
+    monkeypatch.setenv("COMP_CWORD", "2")
+    pc = PowerShellComplete(Command("mycli"), {}, "mycli", "_X_COMPLETE")
+    assert pc.get_completion_args() == (["sub"], r"C:\\Users\\ann\\doc")
+
+
+@pytest.mark.parametrize(
+    ("prog_name", "expected"),
+    [
+        ("my cli", "-CommandName 'my cli'"),
+        ("my' cli", "-CommandName 'my'' cli'"),
+    ],
+)
+def test_powershell_source_quotes_program_name(prog_name, expected):
+    pc = PowerShellComplete(Command("cli"), {}, prog_name, "_X_COMPLETE")
+    source = pc.source()
+    assert expected in source
+    assert f"& {expected[len('-CommandName '):]} 2>$null" in source
+
+
+@pytest.mark.parametrize(
     ("shell", "env", "expect"),
     [
         ("bash", {"COMP_WORDS": "", "COMP_CWORD": "0"}, "plain,a\nplain,b\n"),
