@@ -1005,6 +1005,19 @@ def test_show_envvar_auto_prefix(runner):
     assert "TEST_ARG1" in result.output
 
 
+def test_show_envvar_auto_prefix_in_error(runner):
+    @click.command()
+    @click.option("--port", type=int, required=True, show_envvar=True)
+    def cli(port):
+        pass
+
+    result = runner.invoke(cli, [], auto_envvar_prefix="MYAPP")
+    assert "Error: Missing option '--port' (env var: 'MYAPP_PORT')." in result.output
+
+    result = runner.invoke(cli, ["--port", "not-an-int"], auto_envvar_prefix="MYAPP")
+    assert "Error: Invalid value for '--port' (env var: 'MYAPP_PORT')" in result.output
+
+
 def test_show_envvar_auto_prefix_dash_in_command(runner):
     @click.group()
     def cli():
